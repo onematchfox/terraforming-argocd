@@ -1,0 +1,103 @@
+# Standard Labels
+additionalLabels:
+  app.kubernetes.io/part-of: ''
+
+replicaCount: 1
+
+image:
+  repository: ''
+  pullPolicy: IfNotPresent
+  # Overrides the image tag
+  tag: ''
+
+imagePullSecrets: []
+nameOverride: ''
+fullnameOverride: ''
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  fsGroupChangePolicy: 'OnRootMismatch'
+
+podSecurityGroup: ''
+
+container:
+  # args: []
+  # command: []
+
+  env:
+    []
+    # - name: FOO
+    #   value: "Bar"
+
+  ports:
+    - name: http
+      containerPort: 80
+
+  livenessProbe:
+    httpGet:
+      path: /
+      port: http
+
+  readinessProbe:
+    httpGet:
+      path: /
+      port: http
+
+  startupProbe: {}
+
+  resources:
+    limits:
+      memory: 128Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  securityContext:
+    {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations:
+    {}
+    # eks.amazonaws.com/role-arn:
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ''
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: http
+
+ingress:
+  create: false
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+    alb.ingress.kubernetes.io/certificate-arn: ''
+    alb.ingress.kubernetes.io/group.name: default
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/target-type: ip
+  host: ''
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+revisionHistoryLimit: 2
+
+additionalContainers:
+  []
+  # Provide spec for additional containers as needed. See Kubernetes documentation/`kubectl explain` for more

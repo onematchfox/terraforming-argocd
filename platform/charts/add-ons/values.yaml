@@ -1,0 +1,13 @@
+# Global Values
+repoUrl: ''
+targetRevision: HEAD
+region: ''
+account: ''
+clusterName: ''
+
+awsLoadBalancerController:
+  enableCertManager: true
+
+ingress:
+  certificateArn: ''
+  domain: ''

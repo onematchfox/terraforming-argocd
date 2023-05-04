@@ -1,0 +1,13 @@
+{{- if .Values.podSecurityGroup -}}
+apiVersion: vpcresources.k8s.aws/v1beta1
+kind: SecurityGroupPolicy
+metadata:
+  name: {{ include "eks-application.fullname" . }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "eks-application.selectorLabels" . | nindent 6 }}
+  securityGroups:
+    groupIds:
+      - {{.Values.podSecurityGroup}}
+{{- end }}

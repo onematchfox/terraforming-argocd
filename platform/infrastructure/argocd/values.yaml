@@ -1,0 +1,114 @@
+redis-ha:
+  enabled: false
+
+controller:
+  enableStatefulSet: true
+
+server:
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+  ingress:
+    enabled: true
+    hosts:
+      - ${argocd_host}
+    ingressClassName: alb
+    annotations:
+      alb.ingress.kubernetes.io/actions.not-found: '{"fixedResponseConfig":{"contentType":"text/plain","messageBody":"Not
+        Found","statusCode":"404"},"type":"fixed-response"}'
+      alb.ingress.kubernetes.io/actions.ssl-redirect: '{"redirectConfig":{"port":"443","protocol":"HTTPS","statusCode":"HTTP_301"},"type":"redirect"}'
+      alb.ingress.kubernetes.io/backend-protocol: HTTPS
+      alb.ingress.kubernetes.io/certificate-arn: ${certificate_arn}
+      alb.ingress.kubernetes.io/healthcheck-protocol: HTTPS
+      alb.ingress.kubernetes.io/group.name: default
+      alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+      alb.ingress.kubernetes.io/scheme: 'internet-facing'
+      alb.ingress.kubernetes.io/target-type: ip
+    extraPaths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: ssl-redirect
+            port:
+              name: use-annotation
+  ingressGrpc:
+    enabled: true
+    isAWSALB: true
+    awsALB:
+      serviceType: ClusterIP
+
+repoServer:
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+
+configs:
+  cm:
+    exec.enabled: true
+
+    #use annotation for tracking but keep labels for compatibility with other tools
+    application.resourceTrackingMethod: annotation+label
+
+    resource.exclusions: |
+      - apiGroups:
+        - apigateway.aws.upbound.io
+        - cloudwatch.aws.upbound.io
+        - "*"
+        kinds:
+        - ProviderConfigUsage
+
+    # Configuration to customize resource behavior (optional) can be configured via split sub keys.
+    # Keys are in the form: resource.customizations.ignoreDifferences.<group_kind>, resource.customizations.health.<group_kind>
+    # resource.customizations.actions.<group_kind>, resource.customizations.knownTypeFields.<group-kind>
+    resource.customizations.ignoreDifferences.admissionregistration.k8s.io_MutatingWebhookConfiguration: |
+      jsonPointers:
+      - /webhooks/0/clientConfig/caBundle
+      - /webhooks/1/clientConfig/caBundle
+      - /webhooks/2/clientConfig/caBundle
+      - /webhooks/3/clientConfig/caBundle
+      - /webhooks/4/clientConfig/caBundle
+      - /webhooks/5/clientConfig/caBundle
+      - /webhooks/6/clientConfig/caBundle
+      - /webhooks/7/clientConfig/caBundle
+
+    resource.customizations.ignoreDifferences.admissionregistration.k8s.io_ValidatingWebhookConfiguration: |
+      jsonPointers:
+      - /webhooks/0/clientConfig/caBundle
+
+    # Configuration to customize resource behavior (optional). Keys are in the form: group/Kind.
+    resource.customizations.ignoreDifferences.Secret: |
+      jsonPointers:
+      - /data/ca.crt
+      - /data/tls.crt
+      - /data/tls.key
+
+    # Configuration to define customizations ignoring differences between live and desired states for
+    # all resources (GK).
+    resource.customizations.ignoreDifferences.all: |
+      managedFieldsManagers:
+      - kube-controller-manager
+      jsonPointers:
+      - /spec/replicas
+
+    resource.customizations.health.cert-manager.io_Certificate: |
+      hs = {}
+      if obj.status ~= nil then
+        if obj.status.conditions ~= nil then
+          for i, condition in ipairs(obj.status.conditions) do
+            if condition.type == "Ready" and condition.status == "False" then
+              hs.status = "Degraded"
+              hs.message = condition.message
+              return hs
+            end
+            if condition.type == "Ready" and condition.status == "True" then
+              hs.status = "Healthy"
+              hs.message = condition.message
+              return hs
+            end
+          end
+        end
+      end
+      hs.status = "Progressing"
+      hs.message = "Waiting for certificate"
+      return hs
